@@ -12,15 +12,19 @@ import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.awt.AWTTextureIO;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-import java.awt.image.BufferedImage;
 
 public class SkyblockWorld implements GLEventListener, KeyListener {
 
@@ -57,9 +61,7 @@ public class SkyblockWorld implements GLEventListener, KeyListener {
             } else if (tipo == 1) { // ARENA
                 this.vx = 0.15f + (r.nextFloat() * 0.1f); this.vy = -0.02f - (r.nextFloat() * 0.02f); this.vz = (r.nextFloat() - 0.5f) * 0.1f;
             } else if (tipo == 2) { // NETHER (MODIFICADO: Brasas subiendo)
-                // Menos dispersión lateral
                 this.vx = (r.nextFloat() - 0.5f) * 0.02f; 
-                // Velocidad vertical POSITIVA para que suban
                 this.vy = 0.04f + (r.nextFloat() * 0.03f); 
                 this.vz = (r.nextFloat() - 0.5f) * 0.02f;
             } else if (tipo == 3) { // END
@@ -174,7 +176,12 @@ public class SkyblockWorld implements GLEventListener, KeyListener {
             GLCapabilities capabilities = new GLCapabilities(profile);
             capabilities.setDepthBits(24);
             GLJPanel canvas = new GLJPanel(capabilities);
+            
             SkyblockWorld app = new SkyblockWorld();
+            
+            // --- REPRODUCIR MUSICA ---
+            app.reproducirMusica("C418 - Moog City - Minecraft Volume Alpha.wav");
+            
             canvas.addGLEventListener(app);
             canvas.addKeyListener(app);
             canvas.setFocusable(true);
@@ -188,6 +195,38 @@ public class SkyblockWorld implements GLEventListener, KeyListener {
             FPSAnimator animator = new FPSAnimator(canvas, 60, true);
             animator.start();
         });
+    }
+
+    // --- METODO DE AUDIO ---
+    public void reproducirMusica(String nombreArchivo) {
+        try {
+            File archivo = new File(nombreArchivo);
+            if (!archivo.exists()) {
+                archivo = new File("src/" + nombreArchivo);
+            }
+
+            if (archivo.exists()) {
+                AudioInputStream audioInput = AudioSystem.getAudioInputStream(archivo);
+                Clip clip = AudioSystem.getClip();
+                clip.open(audioInput);
+                
+                // Control de volumen (opcional, para que no suene muy fuerte)
+                try {
+                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                    gainControl.setValue(-10.0f); // Reducir volumen en decibeles
+                } catch (Exception e) {
+                    // Ignorar si el control de volumen no está soportado
+                }
+
+                clip.loop(Clip.LOOP_CONTINUOUSLY); // Repetir
+                clip.start();
+            } else {
+                System.err.println("ADVERTENCIA: No se encontró el archivo de audio: " + nombreArchivo);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error al reproducir audio. Asegúrate de que sea un archivo .wav válido (PCM 16 bit).");
+        }
     }
 
     @Override
@@ -415,7 +454,7 @@ public class SkyblockWorld implements GLEventListener, KeyListener {
 
         // --- 8. PARTÍCULAS ---
         gl.glDisable(GL2.GL_LIGHTING);        
-        gl.glDisable(GL2.GL_TEXTURE_2D);      
+        gl.glDisable(GL2.GL_TEXTURE_2D);       
         
         for(Particle p : particulas) {
             gl.glPushMatrix();
